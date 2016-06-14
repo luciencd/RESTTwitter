@@ -1,0 +1,425 @@
+"""Cloud Foundry test"""
+from flask import Flask
+from flask import request
+import os
+import requests
+import json
+from collections import defaultdict
+
+import networkx as nx
+import re
+
+app = Flask(__name__)
+
+# On Bluemix, get the port number from the environment variable VCAP_APP_PORT
+# When running this app on the local machine, default the port to 8080
+port = int(os.getenv('VCAP_APP_PORT', 8080))
+
+@app.route('/')
+def hello_world():
+    return 'Hello World! I am running on port ' + str(port)
+
+@app.route('/analyze',methods=['GET','POST'])
+def analyze():
+
+    keyword = str(request.args.get('keyword'))
+    num = int(request.args.get('num'))
+    #return keyword # apple
+    #return str(str(keyword)+str(num)) #works! apple100
+    return analyzeTweets(keyword,num)
+
+##Calling flask on
+
+
+
+
+class Node:
+    def __init__(self,name,group,mass):
+        self.name = name
+        self.group = group
+        self.mass = mass
+        self.neighbors = {}
+        self.value = 0
+
+        self.valid = True
+
+        ##list of tweets.
+        self.count = 0
+        self.happiness = 0.0
+        self.anger = 0.0
+
+
+    def addEdge(self,name,edge):
+        self.neighbors[name] = edge
+
+    def existsNeighbor(self,neighbor):
+        return neighbor in self.neighbors
+
+    def getNeighbor(self,neighbor):
+        if(self.existsNeighbor(neighbor)):
+            return self.neighbors[neighbor]
+
+    def isValid(self):
+        return self.valid
+
+    def getSentiment(self):
+
+        if(self.happiness+self.anger == 0):
+            return 50
+        else:
+            return (int)(100.0*((self.happiness)/(self.happiness+self.anger)))
+
+class Edge:
+    def __init__(self,node1,node2):
+        self.source = node1
+        self.target = node2
+        self.weight = 0
+
+        self.valid = True
+
+        self.count = 0
+        self.happiness = 0.0
+        self.anger = 0.0
+    def getTargetValue(self):
+        return self.target.value
+    def getSourceValue(self):
+        return self.source.value
+
+    def setWeight(self,weight):
+        self.weight=weight
+
+    def getWeight(self):
+        return self.weight
+
+    def isValid(self):
+        return self.valid
+
+    def getSentiment(self):
+        if(self.happiness+self.anger == 0):
+            return 50
+        else:
+            return (int)(100.0*((self.happiness)/(self.happiness+self.anger)))
+
+
+class Graph:
+    def __init__(self):
+        self.nodes = {}
+        self.size = 0
+        self.edges = {}
+        self.count = 0
+        self.happiness = 0
+        self.anger = 0
+    def addNode(self,node):
+        self.nodes[node.name] = node
+        self.size+=1
+
+    def getNode(self,name):
+        return self.nodes[name]
+
+    def getAdjacentNodes(self,name):
+        return self.nodes[name].neighbors
+
+    def nodeExists(self,name):
+        if(name in self.nodes):
+            return True
+        else:
+            return False
+
+    def edgeExists(self,name1,name2):
+        if(self.nodeExists(name1) and self.nodeExists(name2)):
+            if(self.getNode(name1).existsNeighbor(name2) and self.getNode(name2).existsNeighbor(name1)):
+                return True
+
+        return False
+
+    def getEdge(self,name1,name2):
+        if(self.edgeExists(name1,name2)):
+            return self.getNode(name1).getNeighbor(name2)
+
+    def addEdge(self,name1,name2):
+
+
+        if(self.nodeExists(name1) and self.nodeExists(name2)):
+            edge = Edge(self.getNode(name1),self.getNode(name2))
+            self.getNode(name1).addEdge(name2,edge)
+            self.getNode(name2).addEdge(name1,edge)
+            self.edges[edge] = edge
+            #self.edges[edge] = edge
+
+    def renameOrdered(self):
+        i=0
+        for item,value in self.nodes.iteritems():
+            if(value.isValid()):
+                value.value = i
+                i+=1
+
+    #should probably cache
+    def outputNodes(self):
+        output = []
+        for name, node in self.nodes.iteritems():
+
+           if(node.isValid()):
+               output.append(node)
+        print "nodes num",len(output)
+        return output
+
+    def outputEdges(self):
+        output = []
+        for key, value in self.edges.iteritems():
+            if(value.isValid()):
+               output.append(value)
+        print "edges num",len(output)
+        return output
+
+    ## make it so we only get top n nodes.
+    ## make it a functional programming option.
+    def invalidate(self,graph):
+        print "invalidating"
+        local_amount = (int)(len(self.nodes)*graph.percent)
+        unordered_list = []
+        for name,node in self.nodes.iteritems():
+            node.valid = True
+            unordered_list.append(node)
+            #print node.name,node.mass,len(node.neighbors)
+            for key,value in node.neighbors.iteritems():
+                #print value.isValid()
+                value.valid = True
+
+        unordered_list.sort(key=lambda node: -len(node.neighbors))
+        print "unorder"
+        #print unordered_list[0:min(graph.amount_shown,len(unordered_list))]
+
+        for node in unordered_list[min(local_amount,len(unordered_list)):len(unordered_list)]:
+            #print node.name,node.mass,len(node.neighbors)
+            node.valid = False
+
+            for key,value in node.neighbors.iteritems():
+                #print value.isValid()
+                #print value.source.name,value.target.name
+                value.valid = False
+
+
+
+            #print ""
+
+
+class twitter:
+
+    def __init__(self,keyword,numTweets):
+        ##Must make ths thing link to envir vars from bluemix
+        self.TWITTER_USERNAME = "ed8cfdc5-f3d0-4c0e-a235-1abb6879ba51"
+        self.TWITTER_PASSWORD = "f1EB5sW37M"
+        self.NO_OF_TWEETS_TO_RETRIEVE = numTweets
+        self.keyword = keyword
+        #self.min_cutoff = self.NO_OF_TWEETS_TO_RETRIEVE/300
+        self.amount_shown = 1000
+        self.percent = 1.0
+        self.twe = {}
+        self.sentiments = {}
+        self.output = {}
+        self.graph = Graph()
+        self.size = -1
+    def reduceit(self,string):
+        #print string
+        if(len(string) < 2):
+            return ""
+        string = string[0]+re.sub(r'\W', '', string[1:])
+        #print string
+        return string
+
+    def addToGraph(self,sentiment,body,symbols):
+        #body = re.sub(':,;%.\n',' ',body)
+        #body = re.sub('',' ',body)
+        body = body.lower()
+        hashtags = body.split(' ')
+        handle = body.split(' ')
+        #print handle
+        hashtags = map(lambda x: self.reduceit(x),hashtags)
+        handle = map(lambda x: self.reduceit(x),handle)
+
+        hashtags = filter(lambda x:( x != ""),hashtags)
+        handle = filter(lambda x:( x != ""),handle)
+
+        hashtags = filter(lambda x:(x!=str("#"+self.keyword)),hashtags)
+        handle = filter(lambda x:(x!=str("@"+self.keyword)),handle)
+
+        hashtags = filter(lambda x:( x[0] == "#"),hashtags)
+        handle = filter(lambda x:( x[0] == "@"),handle)
+
+
+
+
+        handle = []
+        if(hashtags == [] and handle == []):
+            return
+
+
+        #print "tweet:",body
+        #print "content: ",hashtags+handle
+        #print "handle:",handle
+        for item in hashtags+handle:
+            ##Add or edit the node itself
+            oldnode = ""
+            if(self.graph.nodeExists(item)):
+                oldnode = self.graph.getNode(item)
+
+            else:
+                if(item[0] == '#'):
+                    node = Node(item,0,len(hashtags)+len(handle))
+                else:
+                    node = Node(item,1,len(hashtags)+len(handle))
+
+                self.graph.addNode(node)
+                oldnode = self.graph.getNode(item)
+
+            oldnode.mass += len(hashtags)+len(handle)
+            if(sentiment == 0):
+                oldnode.anger+=1
+            elif(sentiment == 1):
+                oldnode.happiness+=1
+
+            oldnode.count += 1
+            #print self.graph.getNode(item)
+
+
+
+
+            #nx.set_node_attributes(G, 'mass', {1:3.5, 2:56})
+
+
+        for node1 in hashtags+handle:
+            for node2 in hashtags+handle:
+                #
+                edge = ""
+                if(self.graph.edgeExists(node1,node2)):
+                    #print "editing link between (x,y)",node1,node2
+                    edge = self.graph.getEdge(node1,node2)
+
+                else:
+                    self.graph.addEdge(node1,node2)
+                    edge = self.graph.getEdge(node1,node2)
+
+                    #print "putting link between (x,y)",node1,node2
+
+                edge.weight += 1.0/(float)(len(hashtags)+len(handle))
+                if(sentiment == 0):
+                    edge.anger+=1
+                elif(sentiment == 1):
+                    edge.happiness+=1
+
+                edge.count += 1
+
+
+    def fetchTweets(self, term):
+          payload = {"q": term, "size": self.NO_OF_TWEETS_TO_RETRIEVE}
+          response = requests.get("https://cdeservice.mybluemix.net:443/api/v1/messages/search", params=payload, auth=(self.TWITTER_USERNAME, self.TWITTER_PASSWORD))
+          twe = json.loads(response.text)
+          self.twe = twe['tweets']
+          return twe
+
+    def getSentiment(self):
+        for i in range(self.NO_OF_TWEETS_TO_RETRIEVE):
+            sentiment = "AMBIVALENT"
+            body = ""
+            symbols = []
+            try:
+                sentiment = self.twe[i]['cde']['content']['sentiment']['polarity']
+
+            except KeyError:
+                pass
+            except IndexError:
+                pass
+            try:
+
+                body = self.twe[i]['message']['body']
+                symbols = self.twe[i]['message']['twitter_entities']['symbols']
+            except KeyError:
+                pass
+            except IndexError:
+                pass
+
+            if(sentiment == "POSITIVE"):
+                sentint = 1
+                #print "pos"
+            elif(sentiment == "NEGATIVE"):
+                sentint = 0
+                #print "neg"
+            else:
+                sentint = 0.5
+            self.addToGraph(sentint, body, symbols)
+
+    def printGraph(self,search):
+
+        edges = list(self.graph.edges(data=True))
+        for item in edges:
+            print item
+
+
+    def returnJSON(self):
+        #edges = list(self.graph.edges(data=True))
+
+        #nodes = self.graph.edges(data=True)
+        jsonObj = {}
+        nodesjsonlist = []
+        for node in self.graph.outputNodes():
+
+            #print {'name':item}
+
+
+            #print '{"name":',node.name,',"group":',node.group,',"mass":',node.mass,',"value":',node.value#node.neighbors#,node.value
+            nodejson = {'name':node.name,'group':node.group,'mass':len(node.neighbors),'sentiment':node.getSentiment()}
+
+            #print {'name':item.name,'group':item.group,'size':item.size}
+
+            #print 'json','name',item['name'],'group',item['group'],'size',item['size']
+            nodesjsonlist.append(nodejson)
+        jsonObj['nodes'] = nodesjsonlist
+
+        edgesjsonlist = []
+        for edge in self.graph.outputEdges():
+
+            #print {'source':edge.source.value,'target':edge.target.value,'weight':edge.weight}
+            edgejson = {'source':edge.source.value,'target':edge.target.value,'value':edge.weight,'sentiment':edge.getSentiment()}
+            edgesjsonlist.append(edgejson)
+
+
+            #if(self.existsNode(edge[1])):
+
+        jsonObj['links'] = edgesjsonlist
+
+        return jsonObj
+#pass in filter function.
+def analyzeTweets(keyword,numTweets):
+
+    tweets = twitter(keyword,numTweets)
+
+    #print tweets.getTweets("goog")['tweets'][0]['sentiment']
+    tweets.fetchTweets(keyword)
+    tweets.getSentiment()
+    #tweets.printGraph("#IBM")
+
+    tweets.graph.invalidate(tweets)
+    tweets.graph.renameOrdered()
+    jsondata = tweets.returnJSON()
+    print len(jsondata)
+    '''
+    with open('data.json', 'w') as f:
+         json.dump(jsondata, f)
+    '''
+
+    return json.dumps(jsondata)
+
+
+    #print "test: square(42) ==", square(42)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=port)
+
+#keyword = "taytweets"
+##pass in a keyword from the ajax call, as well as dates, quantity, n% cutoff
+## and so on.
+
+##We both need filtering functions for the twitter firehose api, as well as
+##a node filter function #functionalprogrammingyall
+## and an edge filter function.
+
+##also return json file to ajax caller.
