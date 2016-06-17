@@ -1,4 +1,4 @@
 ---
 applications:
-- name: hello-world-flask
+- name: resttwitter
   memory: 128M

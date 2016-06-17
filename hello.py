@@ -23,10 +23,9 @@ def hello_world():
 def analyze():
 
     keyword = str(request.args.get('keyword'))
-    num = int(request.args.get('num'))
-    #return keyword # apple
-    #return str(str(keyword)+str(num)) #works! apple100
-    return analyzeTweets(keyword,num)
+    numTweets = int(request.args.get('numTweets'))
+
+    return analyzeTweets(keyword,numTweets,request)
 
 ##Calling flask on
 
@@ -48,8 +47,16 @@ class Node:
         self.happiness = 0.0
         self.anger = 0.0
 
-
+        self.dupes = 0.0
+        self.uniques = 0.0
     def addEdge(self,name,edge):
+        
+        if(name in self.neighbors):
+            #print "duplicate"
+            self.dupes+=1
+        else:
+            self.uniques+=1
+        
         self.neighbors[name] = edge
 
     def existsNeighbor(self,neighbor):
@@ -62,6 +69,8 @@ class Node:
     def isValid(self):
         return self.valid
 
+
+            
     def getSentiment(self):
 
         if(self.happiness+self.anger == 0):
@@ -76,6 +85,7 @@ class Edge:
         self.weight = 0
 
         self.valid = True
+        self.visited = False
 
         self.count = 0
         self.happiness = 0.0
@@ -202,7 +212,93 @@ class Graph:
 
             #print ""
 
+    ##clear all filters.
+    def reset(self,graph):
+        for name,node in self.nodes.iteritems():
+            node.valid = True
+            node.visited = True
+            for key,value in node.neighbors.iteritems():
+                value.valid = True
+                
 
+    def filtermain(self,graph):
+        ##create map of groups of nodes, rank them by size, choose greatest,
+        ##then remove everything else.
+
+        ##breadth first-search.
+        
+        index = 0
+
+        groups = 0
+        maxnode = graph.nodes.items()[0][1]
+        #
+        for name,node in graph.nodes.items():
+            #print node.neighbors
+            node.visited = False
+            if(len(node.neighbors) > len(maxnode.neighbors)):
+                maxnode = node
+
+        print maxnode.dupes,maxnode.uniques
+
+ 
+        print maxnode.neighbors.items()
+        group = -1
+        groups = []
+        while(index < len(graph.nodes)):
+            #print "firstnode",graph.nodes.items()[index][1]
+            if(graph.nodes.items()[index][1].visited == True):
+                index+=1
+                continue
+            
+            group+=1               
+            visited = {}
+            queue = [graph.nodes.items()[index][1]]
+            num = 0
+            while(len(queue) > 0):
+                node = queue[0]
+                #print node
+                #print queue
+                queue = queue[1:]
+                #print queue
+                node.visited = True
+                visited[node.name] = node
+                num+=1
+                for name, neighbor in node.neighbors.items():
+                    #print name
+                    if(neighbor.target.visited == False):
+                        queue.append(neighbor.target)
+
+            
+            groups.append((group,visited,num))
+
+        #print groups
+        groups = sorted(groups,key=lambda group:-group[2])
+        for item in groups:
+            print item
+        #gets biggest group of nodes
+        visited = groups[0][1]
+        print len(visited)
+        
+        for name,node in graph.nodes.items():
+            #print node
+            if name not in visited:
+                #print name,len(node.neighbors)
+                node.valid = False
+                for key,value in node.neighbors.iteritems():
+                    value.valid = False
+
+
+    #dynamic programming filter.                    
+    def filterit(self,graph,func):
+        print "invalidating"
+ 
+        for node in graph.nodes:
+            if(func(node)):
+                node.valid = False
+                for key,value in node.neighbors.iteritems():
+                    value.valid = False
+
+                
 class twitter:
 
     def __init__(self,keyword,numTweets):
@@ -212,7 +308,7 @@ class twitter:
         self.NO_OF_TWEETS_TO_RETRIEVE = numTweets
         self.keyword = keyword
         #self.min_cutoff = self.NO_OF_TWEETS_TO_RETRIEVE/300
-        self.amount_shown = 1000
+        self.amount_shown = 100
         self.percent = 1.0
         self.twe = {}
         self.sentiments = {}
@@ -389,29 +485,32 @@ class twitter:
 
         return jsonObj
 #pass in filter function.
-def analyzeTweets(keyword,numTweets):
+def analyzeTweets(keyword,numTweets,request):
 
     tweets = twitter(keyword,numTweets)
-
-    #print tweets.getTweets("goog")['tweets'][0]['sentiment']
     tweets.fetchTweets(keyword)
     tweets.getSentiment()
-    #tweets.printGraph("#IBM")
+    
 
     tweets.graph.invalidate(tweets)
+    
+    ##filtering things based on get requests
+    if(request.args.get('main') == "True"):
+        tweets.graph.filtermain(tweets.graph)
+    
     tweets.graph.renameOrdered()
     jsondata = tweets.returnJSON()
     print len(jsondata)
-    '''
-    with open('data.json', 'w') as f:
-         json.dump(jsondata, f)
-    '''
 
+    #returning json data of the graph.
     return json.dumps(jsondata)
+
 
 
     #print "test: square(42) ==", square(42)
 if __name__ == '__main__':
+    #analyzeTweets('yahoo',10000)
+    
     app.run(host='0.0.0.0', port=port)
 
 #keyword = "taytweets"
