@@ -339,6 +339,10 @@ class twitter:
         hashtags = filter(lambda x:(x!=str("#"+self.keyword)),hashtags)
         handle = filter(lambda x:(x!=str("@"+self.keyword)),handle)
 
+        hashtags = filter(lambda x:( x != "#"),hashtags)
+        handle = filter(lambda x:( x != "@"),handle)
+
+
         hashtags = filter(lambda x:( x[0] == "#"),hashtags)
         handle = filter(lambda x:( x[0] == "@"),handle)
 
