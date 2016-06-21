@@ -183,17 +183,19 @@ class Graph:
 
     ## make it so we only get top n nodes.
     ## make it a functional programming option.
-    def invalidate(self,graph):
+    def invalidate(self,graph,number):
         print "invalidating"
-        local_amount = (int)(len(self.nodes)*graph.percent)
+        #local_amount = (int)(len(self.nodes)*graph.percent)
+        local_amount = number
         unordered_list = []
-        for name,node in self.nodes.iteritems():
-            node.valid = True
-            unordered_list.append(node)
+        for name,node in self.nodes.iteritems() :
+            #node.valid = True
+            if(node.valid):
+                unordered_list.append(node)
             #print node.name,node.mass,len(node.neighbors)
-            for key,value in node.neighbors.iteritems():
+            #for key,value in node.neighbors.iteritems():
                 #print value.isValid()
-                value.valid = True
+                #value.valid = True
 
         unordered_list.sort(key=lambda node: -len(node.neighbors))
         print "unorder"
@@ -490,17 +492,48 @@ class twitter:
         return jsonObj
 #pass in filter function.
 def analyzeTweets(keyword,numTweets,request):
+    try: 
+        numBubbles = int(request.args.get('numBubbles'))
+    except AttributeError:
+        numBubbles = 0
 
+    try:
+        mainBool = str(request.args.get('main'))
+    except AttributeError:
+        mainBool = "True"
+
+
+    
     tweets = twitter(keyword,numTweets)
+    ##dont bother with keyword and numTweets arguments.
+
+    
+
+    ##put all tweets in list.
     tweets.fetchTweets(keyword)
+
+    ##get all the sentiment for nodes and generate graph.
     tweets.getSentiment()
     
+    ##reset all nodes to unfiltered unvisited.
+    tweets.graph.reset(tweets.graph)
 
-    tweets.graph.invalidate(tweets)
+
     
     ##filtering things based on get requests
-    if(request.args.get('main') == "True"):
+    if(mainBool == "True"):
+        ##filter out all the nodes that are not a part of the biggest connected graph
         tweets.graph.filtermain(tweets.graph)
+
+    ##getting number of top bubbles to display.
+    if(numBubbles > 0):
+        ##filter only leaving top n nodes.
+        tweets.graph.invalidate(tweets,numBubbles)
+
+    ##filter only leaving top n nodes.
+    #tweets.graph.invalidate(tweets)
+
+    
     
     tweets.graph.renameOrdered()
     jsondata = tweets.returnJSON()
@@ -513,7 +546,7 @@ def analyzeTweets(keyword,numTweets,request):
 
     #print "test: square(42) ==", square(42)
 if __name__ == '__main__':
-    #analyzeTweets('yahoo',10000)
+    #analyzeTweets('yahoo',10000,"")
     
     app.run(host='0.0.0.0', port=port)
 
