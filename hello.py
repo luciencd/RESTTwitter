@@ -5,10 +5,32 @@ import os
 import requests
 import json
 from collections import defaultdict
-
+import random
 import networkx as nx
 import re
 
+import time
+c = {}
+def getCache(url):
+    
+    try:
+        return c[url]
+    except TypeError:
+        return False
+    
+def cached(url):
+    #Obviously if its been 1 day, remove cache values
+    
+    if url in c:
+        return True
+    else:
+        return False
+
+    
+def cache(url,data):
+    c[url] = data
+
+    
 app = Flask(__name__)
 
 # On Bluemix, get the port number from the environment variable VCAP_APP_PORT
@@ -24,8 +46,22 @@ def analyze():
 
     keyword = str(request.args.get('keyword'))
     numTweets = int(request.args.get('numTweets'))
-
-    return analyzeTweets(keyword,numTweets,request)
+    numBubbles = int(request.args.get('numBubbles'))
+    mainBool = str(request.args.get('main'))
+    t = time.strftime("%B/%d/%H")
+    ##add date rounded to nearest hour to url, so that every hour, the thing gets updated
+    
+    url = t+keyword+str(numTweets)+str(numBubbles)+mainBool
+    print url
+    #cacheing
+    if(cached(url)):
+        print "CACHED"
+        return getCache(url)
+    else:
+        print "NOTCACHED"
+        data = analyzeTweets(keyword,numTweets,request)
+        cache(url,data)
+        return data
 
 ##Calling flask on
 
@@ -170,7 +206,7 @@ class Graph:
 
            if(node.isValid()):
                output.append(node)
-        print "nodes num",len(output)
+        #print "nodes num",len(output)
         return output
 
     def outputEdges(self):
@@ -178,13 +214,13 @@ class Graph:
         for key, value in self.edges.iteritems():
             if(value.isValid()):
                output.append(value)
-        print "edges num",len(output)
+        #print "edges num",len(output)
         return output
 
     ## make it so we only get top n nodes.
     ## make it a functional programming option.
     def invalidate(self,graph,number):
-        print "invalidating"
+        #print "invalidating"
         #local_amount = (int)(len(self.nodes)*graph.percent)
         local_amount = number
         unordered_list = []
@@ -198,7 +234,7 @@ class Graph:
                 #value.valid = True
 
         unordered_list.sort(key=lambda node: -len(node.neighbors))
-        print "unorder"
+        #print "unorder"
         #print unordered_list[0:min(graph.amount_shown,len(unordered_list))]
 
         for node in unordered_list[min(local_amount,len(unordered_list)):len(unordered_list)]:
@@ -240,10 +276,10 @@ class Graph:
             if(len(node.neighbors) > len(maxnode.neighbors)):
                 maxnode = node
 
-        print maxnode.dupes,maxnode.uniques
+        #print maxnode.dupes,maxnode.uniques
 
  
-        print maxnode.neighbors.items()
+        #print maxnode.neighbors.items()
         group = -1
         groups = []
         while(index < len(graph.nodes)):
@@ -275,11 +311,11 @@ class Graph:
 
         #print groups
         groups = sorted(groups,key=lambda group:-group[2])
-        for item in groups:
-            print item
+        #for item in groups:
+        #    print item
         #gets biggest group of nodes
         visited = groups[0][1]
-        print len(visited)
+        #print len(visited)
         
         for name,node in graph.nodes.items():
             #print node
@@ -292,7 +328,7 @@ class Graph:
 
     #dynamic programming filter.                    
     def filterit(self,graph,func):
-        print "invalidating"
+        #print "invalidating"
  
         for node in graph.nodes:
             if(func(node)):
@@ -469,7 +505,7 @@ class twitter:
 
 
             #print '{"name":',node.name,',"group":',node.group,',"mass":',node.mass,',"value":',node.value#node.neighbors#,node.value
-            nodejson = {'name':node.name,'group':node.group,'mass':len(node.neighbors),'sentiment':node.getSentiment()}
+            nodejson = {'name':node.name,'group':node.group,'mass':len(node.neighbors),'sentiment':node.getSentiment()+random.randint(-7,7)}
 
             #print {'name':item.name,'group':item.group,'size':item.size}
 
@@ -481,7 +517,7 @@ class twitter:
         for edge in self.graph.outputEdges():
 
             #print {'source':edge.source.value,'target':edge.target.value,'weight':edge.weight}
-            edgejson = {'source':edge.source.value,'target':edge.target.value,'value':edge.weight,'sentiment':edge.getSentiment()}
+            edgejson = {'source':edge.source.value,'target':edge.target.value,'value':edge.weight,'sentiment':edge.getSentiment()+random.randint(-7,7)}
             edgesjsonlist.append(edgejson)
 
 
@@ -537,7 +573,7 @@ def analyzeTweets(keyword,numTweets,request):
     
     tweets.graph.renameOrdered()
     jsondata = tweets.returnJSON()
-    print len(jsondata)
+    #print len(jsondata)
 
     #returning json data of the graph.
     return json.dumps(jsondata)
