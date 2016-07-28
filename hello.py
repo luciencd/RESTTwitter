@@ -1,6 +1,7 @@
 """Cloud Foundry test"""
 from flask import Flask
 from flask import request
+from flask_cors import CORS, cross_origin
 import os
 import requests
 import json
@@ -10,6 +11,7 @@ import networkx as nx
 import re
 
 import time
+
 c = {}
 def getCache(url):
     
@@ -32,6 +34,7 @@ def cache(url,data):
 
     
 app = Flask(__name__)
+CORS(app)
 
 # On Bluemix, get the port number from the environment variable VCAP_APP_PORT
 # When running this app on the local machine, default the port to 8080
@@ -48,7 +51,7 @@ def analyze():
     numTweets = int(request.args.get('numTweets'))
     numBubbles = int(request.args.get('numBubbles'))
     mainBool = str(request.args.get('main'))
-    t = time.strftime("%B/%d/%H")
+    t = time.strftime("%B/%d")
     ##add date rounded to nearest hour to url, so that every hour, the thing gets updated
     
     url = t+keyword+str(numTweets)+str(numBubbles)+mainBool
@@ -341,8 +344,8 @@ class twitter:
 
     def __init__(self,keyword,numTweets):
         ##Must make ths thing link to envir vars from bluemix
-        self.TWITTER_USERNAME = "ed8cfdc5-f3d0-4c0e-a235-1abb6879ba51"
-        self.TWITTER_PASSWORD = "f1EB5sW37M"
+        self.TWITTER_USERNAME = "f8499318-83de-4e36-bb68-adf3cd8ab000"
+        self.TWITTER_PASSWORD = "RdCd9hrTag"
         self.NO_OF_TWEETS_TO_RETRIEVE = numTweets
         self.keyword = keyword
         #self.min_cutoff = self.NO_OF_TWEETS_TO_RETRIEVE/300
@@ -451,11 +454,15 @@ class twitter:
     def fetchTweets(self, term):
           payload = {"q": term, "size": self.NO_OF_TWEETS_TO_RETRIEVE}
           response = requests.get("https://cdeservice.mybluemix.net:443/api/v1/messages/search", params=payload, auth=(self.TWITTER_USERNAME, self.TWITTER_PASSWORD))
+          
           twe = json.loads(response.text)
+          #print len(twe['tweets'])
           self.twe = twe['tweets']
           return twe
 
     def getSentiment(self):
+        ##ideally compile all words here to begin with to get idf score
+        
         for i in range(self.NO_OF_TWEETS_TO_RETRIEVE):
             sentiment = "AMBIVALENT"
             body = ""
@@ -471,6 +478,7 @@ class twitter:
 
                 body = self.twe[i]['message']['body']
                 symbols = self.twe[i]['message']['twitter_entities']['symbols']
+                ##Need tool that can extract key words from string sentence.
             except KeyError:
                 pass
             except IndexError:
