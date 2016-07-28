@@ -1,0 +1,70 @@
+
+{{#Array}}
+<div style ="width:100%;">
+
+  <div class="ibm-card">
+    <input class = "id" value="{{id}}" style="display:none;"></input>
+    <div class="ibm-card__content">
+        <h3 class="ibm-h4">{{firstname}} {{lastname}}</h3>
+        <h4 class="ibm-h4">{{position}} {{location}}</h4>
+        <a href = 'mailto:{{username}}'>{{username}}</a>
+
+    </div>
+    <div class="ibm-card__bottom">
+
+      Will help you with:
+      <div class="field">
+        <button class="edit-field edit-field-button">
+          <span class="ally-text">Edit skill</span>
+          <i class="edit-field-icon"></i>
+        </button>
+
+
+        <ul class="skills-section compact-view field-text">
+          {{#willgive}}
+          <li data-endorsed-item-name="Linux" style ="content:none;" class="endorse-item has-endorsements" data-endorsement-id="">
+            <div>
+              <span class="skill-pill field ">
+                <span class="endorse-count">
+                  <span class="num-endorsements" data-count="{{score}}">{{score}}</span>
+                </span>
+                <span class="endorse-item-name">
+                  <span class="endorse-item-name-text" dir="ltr">{{name}}</span>
+                </span>
+              </span>
+            </div>
+          </li>
+          {{/willgive}}
+        </ul>
+      </div>
+
+      Needs your help with:
+      <div class="field">
+        <button class="edit-field edit-field-button">
+          <span class="ally-text">Edit skill</span>
+          <i class="edit-field-icon"></i>
+        </button>
+
+
+        <ul class="skills-section compact-view field-text">
+          {{#willneed}}
+          <li data-endorsed-item-name="Linux" style ="content:none;" class="endorse-item has-endorsements" data-endorsement-id="">
+            <div>
+              <span class="skill-pill field ">
+                <span class="endorse-count">
+                  <span class="num-endorsements" data-count="{{score}}">{{score}}</span>
+                </span>
+                <span class="endorse-item-name">
+                  <span class="endorse-item-name-text" dir="ltr">{{name}}</span>
+                </span>
+              </span>
+            </div>
+          </li>
+          {{/willneed}}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+{{/Array}}

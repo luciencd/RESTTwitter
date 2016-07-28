@@ -1,3 +1,6 @@
 Flask
 requests
 networkx
+flask_cors
+pystache
+pymysql
