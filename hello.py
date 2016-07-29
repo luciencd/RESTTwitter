@@ -597,7 +597,8 @@ class twitter:
             scores.append( (token,round(tf,5),round(df,5),round(idf,5),round(tf*idf,5) ))
 
         scores = sorted(scores, key=lambda tup: -tup[3])
-        print scores[0:4]
+        #print scores[0:4]
+        return scores[0:4]
                     #print token,"appeared ", df,"times total. appeared ",tf," times in the document giving a score of:",tf*idf
         
             
