@@ -10,6 +10,8 @@ import random
 import networkx as nx
 import re
 
+import nltk
+
 import time
 
 c = {}
@@ -57,7 +59,7 @@ def analyze():
     url = t+keyword+str(numTweets)+str(numBubbles)+mainBool
     print url
     #cacheing
-    if(cached(url)):
+    if(False):#cached(url)):
         print "CACHED"
         return getCache(url)
     else:
@@ -267,6 +269,9 @@ class Graph:
         ##then remove everything else.
 
         ##breadth first-search.
+        if(graph.size <=0):
+            return False
+            
         
         index = 0
 
@@ -356,6 +361,10 @@ class twitter:
         self.output = {}
         self.graph = Graph()
         self.size = -1
+
+        
+        self.df = {}
+        
     def reduceit(self,string):
         #print string
         if(len(string) < 2):
@@ -364,21 +373,28 @@ class twitter:
         #print string
         return string
 
-    def addToGraph(self,sentiment,body,symbols):
+    def addToGraph(self,sentiment,tokens):
+
+        '''
         #body = re.sub(':,;%.\n',' ',body)
         #body = re.sub('',' ',body)
         body = body.lower()
         hashtags = body.split(' ')
         handle = body.split(' ')
         #print handle
+        
         hashtags = map(lambda x: self.reduceit(x),hashtags)
         handle = map(lambda x: self.reduceit(x),handle)
+
+        for i in range(len(hashtags)):
+            tokens = ''.join(e for e in string if e.isalnum())
+            
 
         hashtags = filter(lambda x:( x != ""),hashtags)
         handle = filter(lambda x:( x != ""),handle)
 
-        hashtags = filter(lambda x:(x!=str("#"+self.keyword)),hashtags)
-        handle = filter(lambda x:(x!=str("@"+self.keyword)),handle)
+#        hashtags = filter(lambda x:(x!=str("#"+self.keyword)),hashtags)
+#        handle = filter(lambda x:(x!=str("@"+self.keyword)),handle)
 
         hashtags = filter(lambda x:( x != "#"),hashtags)
         handle = filter(lambda x:( x != "@"),handle)
@@ -387,33 +403,33 @@ class twitter:
         hashtags = filter(lambda x:( x[0] == "#"),hashtags)
         handle = filter(lambda x:( x[0] == "@"),handle)
 
+        print handle
+        '''
 
-
-
-        handle = []
-        if(hashtags == [] and handle == []):
-            return
 
 
         #print "tweet:",body
         #print "content: ",hashtags+handle
         #print "handle:",handle
-        for item in hashtags+handle:
+        for item in tokens:
             ##Add or edit the node itself
             oldnode = ""
             if(self.graph.nodeExists(item)):
                 oldnode = self.graph.getNode(item)
 
             else:
+                node = Node(item,0,len(tokens))
+                '''
                 if(item[0] == '#'):
                     node = Node(item,0,len(hashtags)+len(handle))
                 else:
                     node = Node(item,1,len(hashtags)+len(handle))
+                '''
 
                 self.graph.addNode(node)
                 oldnode = self.graph.getNode(item)
 
-            oldnode.mass += len(hashtags)+len(handle)
+            oldnode.mass += len(tokens)
             if(sentiment == 0):
                 oldnode.anger+=1
             elif(sentiment == 1):
@@ -428,8 +444,8 @@ class twitter:
             #nx.set_node_attributes(G, 'mass', {1:3.5, 2:56})
 
 
-        for node1 in hashtags+handle:
-            for node2 in hashtags+handle:
+        for node1 in tokens:
+            for node2 in tokens:
                 #
                 edge = ""
                 if(self.graph.edgeExists(node1,node2)):
@@ -442,7 +458,7 @@ class twitter:
 
                     #print "putting link between (x,y)",node1,node2
 
-                edge.weight += 1.0/(float)(len(hashtags)+len(handle))
+                edge.weight += 1.0/(float)(len(tokens))
                 if(sentiment == 0):
                     edge.anger+=1
                 elif(sentiment == 1):
@@ -492,8 +508,101 @@ class twitter:
                 #print "neg"
             else:
                 sentint = 0.5
-            self.addToGraph(sentint, body, symbols)
+            ##for this tweet,
 
+
+            tokens = self.tokenize(body)
+            
+ 
+            
+            scores = self.scoreize(tokens)
+            
+            self.addToGraph(sentint, tokens)
+            
+    def collectText(self):
+
+        listOfWords = []
+        
+        for i in range(self.NO_OF_TWEETS_TO_RETRIEVE):
+            body = ""
+
+            try:
+
+                body = self.twe[i]['message']['body']
+                symbols = self.twe[i]['message']['twitter_entities']['symbols']
+                ##Need tool that can extract key words from string sentence.
+            except KeyError:
+                pass
+            except IndexError:
+                pass
+
+
+
+
+            tokens = self.tokenize(body)
+
+
+
+            uniques = set(tokens)
+            
+            for word in uniques:
+                if word in self.df:
+                    self.df[word]+= 1
+                else:
+                    self.df[word] = 1
+
+
+        
+    def tokenize(self,body):
+        
+        #print body
+        ##map single string body to sentence
+        sentences = nltk.tokenize.sent_tokenize(body)
+        #print sentences
+
+        ##map each sentence to single word tokens.
+        tokens = [nltk.tokenize.word_tokenize(s) for s in sentences]
+        #print tokens
+
+        
+
+ 
+        ##keep only top 4 words with highest tdidf score in all sentences,
+        ##where each sentence is a separate document(or not for now)
+        listoftokens = []
+        for sentence in tokens:
+
+            for token in sentence:
+                ##time to normalize every token
+                
+                normalizedToken = token.lower()
+                ''.join(e for e in normalizedToken if e.isalnum())
+                listoftokens.append(normalizedToken)
+
+        
+        return listoftokens
+
+    def scoreize(self,tokens):
+        ## [("word","score")] ordered by score
+
+        scores = []
+        for token in tokens:
+            ##count how many times token appears in this list tokens
+            tf = tokens.count(token)
+
+            ##get the inverse of the frequency of how much this token appears in all documents
+            df = self.df[token]
+            idf = 1.0/df;
+            
+            scores.append( (token,round(tf,5),round(df,5),round(idf,5),round(tf*idf,5) ))
+
+        scores = sorted(scores, key=lambda tup: -tup[3])
+        print scores[0:4]
+                    #print token,"appeared ", df,"times total. appeared ",tf," times in the document giving a score of:",tf*idf
+        
+            
+
+    
     def printGraph(self,search):
 
         edges = list(self.graph.edges(data=True))
@@ -556,8 +665,13 @@ def analyzeTweets(keyword,numTweets,request):
     ##put all tweets in list.
     tweets.fetchTweets(keyword)
 
+    ##create text collection
+    tweets.collectText()
+    
     ##get all the sentiment for nodes and generate graph.
     tweets.getSentiment()
+
+    
     
     ##reset all nodes to unfiltered unvisited.
     tweets.graph.reset(tweets.graph)
@@ -590,9 +704,9 @@ def analyzeTweets(keyword,numTweets,request):
 
     #print "test: square(42) ==", square(42)
 if __name__ == '__main__':
-    #analyzeTweets('yahoo',10000,"")
+    #analyzeTweets('yahoo',50,"")
     
-    app.run(host='0.0.0.0', port=port)
+    #app.run(host='0.0.0.0', port=port)
 
 #keyword = "taytweets"
 ##pass in a keyword from the ajax call, as well as dates, quantity, n% cutoff
