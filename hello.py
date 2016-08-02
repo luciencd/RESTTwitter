@@ -11,8 +11,14 @@ import networkx as nx
 import re
 
 import nltk
-
 import time
+#NLTK_DATA = '/Users/lucienchristie-dervaux/documents/RESTTwitter'
+nltk.data.path.append('/Users/lucienchristie-dervaux/documents/RESTTwitter/nltk_data')
+nltk.data.path.append('/home/vcap/app/nltk_data')
+nltk.data.path = nltk.data.path[1:]
+
+from nltk.corpus import stopwords
+print nltk.data.path
 
 c = {}
 def getCache(url):
@@ -48,7 +54,10 @@ def hello_world():
 
 @app.route('/analyze',methods=['GET','POST'])
 def analyze():
-
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    #print dir_path
+    #return dir_path
+    #print nltk.data.path
     keyword = str(request.args.get('keyword'))
     numTweets = int(request.args.get('numTweets'))
     numBubbles = int(request.args.get('numBubbles'))
@@ -59,7 +68,10 @@ def analyze():
     url = t+keyword+str(numTweets)+str(numBubbles)+mainBool
     print url
     #cacheing
-    if(False):#cached(url)):
+
+
+    #May need to add a hashtag to the token to make search more specific
+    if(cached(url)):
         print "CACHED"
         return getCache(url)
     else:
@@ -91,7 +103,7 @@ class Node:
         self.dupes = 0.0
         self.uniques = 0.0
     def addEdge(self,name,edge):
-        
+         
         if(name in self.neighbors):
             #print "duplicate"
             self.dupes+=1
@@ -333,6 +345,26 @@ class Graph:
                 for key,value in node.neighbors.iteritems():
                     value.valid = False
 
+    
+    def filteredges(self,graph):
+        for name,node in graph.nodes.items():
+            neighbor_array = node.neighbors.values()
+            for edge in neighbor_array:
+                edge.valid = False
+            
+        for name,node in graph.nodes.items():
+
+            neighbor_array = node.neighbors.values()
+            
+            neighbor_array = sorted(neighbor_array,key=lambda edge:edge.weight,reverse=False)
+            index = 0
+            
+            for edge in neighbor_array:
+                if(index <= 15):
+                    edge.valid = True
+
+                index +=1
+
 
     #dynamic programming filter.                    
     def filterit(self,graph,func):
@@ -418,7 +450,7 @@ class twitter:
                 oldnode = self.graph.getNode(item)
 
             else:
-                node = Node(item,0,len(tokens))
+                node = Node(item,0,1)
                 '''
                 if(item[0] == '#'):
                     node = Node(item,0,len(hashtags)+len(handle))
@@ -429,7 +461,7 @@ class twitter:
                 self.graph.addNode(node)
                 oldnode = self.graph.getNode(item)
 
-            oldnode.mass += len(tokens)
+            oldnode.mass += 1
             if(sentiment == 0):
                 oldnode.anger+=1
             elif(sentiment == 1):
@@ -458,7 +490,7 @@ class twitter:
 
                     #print "putting link between (x,y)",node1,node2
 
-                edge.weight += 1.0/(float)(len(tokens))
+                edge.weight += 1#1.0/(float)(len(tokens))
                 if(sentiment == 0):
                     edge.anger+=1
                 elif(sentiment == 1):
@@ -517,7 +549,8 @@ class twitter:
             
             scores = self.scoreize(tokens)
             
-            self.addToGraph(sentint, tokens)
+            
+            self.addToGraph(sentint, scores)
             
     def collectText(self):
 
@@ -541,7 +574,7 @@ class twitter:
 
             tokens = self.tokenize(body)
 
-
+            
 
             uniques = set(tokens)
             
@@ -576,7 +609,7 @@ class twitter:
                 ##time to normalize every token
                 
                 normalizedToken = token.lower()
-                ''.join(e for e in normalizedToken if e.isalnum())
+                
                 listoftokens.append(normalizedToken)
 
         
@@ -585,25 +618,49 @@ class twitter:
     def scoreize(self,tokens):
         ## [("word","score")] ordered by score
 
+
+
         scores = []
-        for token in tokens:
+        #print "scoreize"
+        #print tokens,"\n\n"
+        
+        tokens = [token for token in tokens if token not in stopwords.words('english')]
+        tokens = [token for token in tokens if len(token)>3]
+        tokens = [token for token in tokens if token not in ["http","https"]]
+        #print tokens,"\n\n"
+
+        for token in set(tokens):
             ##count how many times token appears in this list tokens
             tf = tokens.count(token)
 
             ##get the inverse of the frequency of how much this token appears in all documents
             df = self.df[token]
-            idf = 1.0/df;
+            if(df < 2):
+                continue
             
+            idf = 1.0/df;
+     
+                
             scores.append( (token,round(tf,5),round(df,5),round(idf,5),round(tf*idf,5) ))
+            #print scores[len(scores)-1],tokens,"\n\n"
+        scores = sorted(scores, key=lambda tup: tup[3],reverse=True)
 
-        scores = sorted(scores, key=lambda tup: -tup[3])
+        newlist = []
+        for score in scores[0:min(4,len(scores))]:
+            newlist.append(score[0])
+
         #print scores[0:4]
-        return scores[0:4]
+        
+        #for tokens in scores[0:2]:
+        #   print tokens[0],tokens[1],tokens[2],tokens[3]
+        return newlist
                     #print token,"appeared ", df,"times total. appeared ",tf," times in the document giving a score of:",tf*idf
         
             
 
     
+
+        
     def printGraph(self,search):
 
         edges = list(self.graph.edges(data=True))
@@ -665,30 +722,41 @@ def analyzeTweets(keyword,numTweets,request):
 
     ##put all tweets in list.
     tweets.fetchTweets(keyword)
+    print "fetchtweets"
 
     ##create text collection
     tweets.collectText()
-    
+    print "collecttext"
     ##get all the sentiment for nodes and generate graph.
     tweets.getSentiment()
+    print "getSentiment"
 
     
     
     ##reset all nodes to unfiltered unvisited.
     tweets.graph.reset(tweets.graph)
+    print "reset"
+    print len(tweets.graph.nodes)
 
+
+    
+    ##only allowing 5 top edges per node.
+    tweets.graph.filteredges(tweets.graph)
 
     
     ##filtering things based on get requests
     if(mainBool == "True"):
         ##filter out all the nodes that are not a part of the biggest connected graph
         tweets.graph.filtermain(tweets.graph)
+    
+    print "filtering"
 
     ##getting number of top bubbles to display.
     if(numBubbles > 0):
         ##filter only leaving top n nodes.
         tweets.graph.invalidate(tweets,numBubbles)
 
+    print "numbering bubbles"
     ##filter only leaving top n nodes.
     #tweets.graph.invalidate(tweets)
 
@@ -699,6 +767,7 @@ def analyzeTweets(keyword,numTweets,request):
     #print len(jsondata)
 
     #returning json data of the graph.
+    print "finished"
     return json.dumps(jsondata)
 
 
@@ -707,7 +776,7 @@ def analyzeTweets(keyword,numTweets,request):
 if __name__ == '__main__':
     #analyzeTweets('yahoo',50,"")
     
-    #app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port)
 
 #keyword = "taytweets"
 ##pass in a keyword from the ajax call, as well as dates, quantity, n% cutoff
