@@ -680,7 +680,7 @@ class twitter:
 
 
             #print '{"name":',node.name,',"group":',node.group,',"mass":',node.mass,',"value":',node.value#node.neighbors#,node.value
-            nodejson = {'name':node.name,'group':node.group,'mass':len(node.neighbors),'sentiment':node.getSentiment()+random.randint(-7,7)}
+            nodejson = {'name':node.name,'group':node.group,'mass':len(node.neighbors),'sentiment':node.getSentiment()}
 
             #print {'name':item.name,'group':item.group,'size':item.size}
 
@@ -692,7 +692,7 @@ class twitter:
         for edge in self.graph.outputEdges():
 
             #print {'source':edge.source.value,'target':edge.target.value,'weight':edge.weight}
-            edgejson = {'source':edge.source.value,'target':edge.target.value,'value':edge.weight,'sentiment':edge.getSentiment()+random.randint(-7,7)}
+            edgejson = {'source':edge.source.value,'target':edge.target.value,'value':edge.weight,'sentiment':edge.getSentiment()}
             edgesjsonlist.append(edgejson)
 
 
