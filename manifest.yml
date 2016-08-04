@@ -1,4 +1,4 @@
 ---
 applications:
-- name: resttwitter
+- name: resthelpr
   memory: 128M

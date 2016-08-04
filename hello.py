@@ -9,6 +9,7 @@ from collections import defaultdict
 import random
 import networkx as nx
 import re
+<<<<<<< HEAD
 
 import nltk
 import time
@@ -39,8 +40,98 @@ def cached(url):
     
 def cache(url,data):
     c[url] = data
+=======
+from math import *
+import time
+#import MySQLdb
+#import config
+import pymysql
+import pystache
+import math
 
-    
+
+connection = pymysql.connect(host='us-cdbr-iron-east-04.cleardb.net',
+                             user='bbc1aa73c9c33a',
+                             password='6b864e65',
+                             db='ad_01dfa487e753bc4',
+                             charset='utf8mb4',
+                             cursorclass=pymysql.cursors.DictCursor)
+cursor = connection.cursor()
+with open ("search.mustache", "r") as myfile:
+    data=myfile.readlines()
+
+''.join(data)
+mustacheSearchFile =''.join(data)# 'Hi {{#Array}}<p>{{name}}{{email}} can help you with  {{#willgive}}{{name}}{{/willgive}}</p>{{/Array}}!'
+print mustacheSearchFile
+
+users = '''
+{"users":[{"id":1,
+            "name":"Lucien",
+            "email":"lchrist@us.ibm.com",
+            "have":[
+                    {"php":"6"},
+                    {"python":"10"},
+                    {"java":"4"},
+                    {"sql":"2"},
+                    {"ajax":"5"},
+                    {"twitter API":"8"},
+                    {"REST API":"5"},
+                    {"Machine Learning":"20"}
+                    ],
+            "need":[
+                    {"CORS":"1"},
+                    {"ibm bluemix":"1"},
+                    {"node.js":"1"}
+                   ],
+            "willgive":[],
+            "willneed":[]
+
+            },
+
+            {"id":2,
+            "name":"Rohit",
+            "email":"rkutty@us.ibm.com",
+            "have":[{"php":"10"},
+                        {"data mining":"7"},
+                        {"ibm bluemix":"5"},
+                        {"sql":"10"},
+                        {"text mining":"5"},
+                        {"data analysis":"10"},
+                        {"analytics":"10"},
+                        {"R":"5"}],
+            "need":[{"design patterns":"1"},
+                    {"machine learning":"1"},
+                    {"twitter API":"1"}],
+            "willgive":[],
+            "willneed":[]
+
+            }
+            ,
+            {"id":3,
+            "name":"James",
+            "email":"greeneja@us.ibm.com",
+            "have":[{"php":"10"},
+                        {"java":"10"},
+                        {"ibm bluemix":"5"},
+                        {"sql":"10"},
+                        {"javascript":"5"},
+                        {"data mining":"5"},
+                        {"scala":"10"},
+                        {"twilio":"5"}],
+            "need":[{"security":"1"},
+                    {"encryption":"1"},
+                    {"javascript":"1"}],
+            "willgive":[],
+            "willneed":[]
+                    
+
+            }
+        ]
+}
+
+'''
+>>>>>>> ba66a2fc79ad5eb26a68d4c81742c122ee8396a9
+
 app = Flask(__name__)
 CORS(app)
 
@@ -52,8 +143,15 @@ port = int(os.getenv('VCAP_APP_PORT', 8080))
 def hello_world():
     return 'Hello World! I am running on port ' + str(port)
 
+'''
+@app.route('/closedb')
+def hello_world():
+    connection.close()
+    return "closed db"
+'''
 @app.route('/analyze',methods=['GET','POST'])
 def analyze():
+<<<<<<< HEAD
     dir_path = os.path.dirname(os.path.realpath(__file__))
     #print dir_path
     #return dir_path
@@ -114,219 +212,81 @@ class Node:
 
     def existsNeighbor(self,neighbor):
         return neighbor in self.neighbors
+=======
 
-    def getNeighbor(self,neighbor):
-        if(self.existsNeighbor(neighbor)):
-            return self.neighbors[neighbor]
+    searchJson = request.args.get('search')
+    
+    
+    actualJson = json.loads(searchJson)
+    
+    #print actualJson["array"]
+    #print "USERNAME: ",actualJson["username"]
+>>>>>>> ba66a2fc79ad5eb26a68d4c81742c122ee8396a9
 
-    def isValid(self):
-        return self.valid
+    username = actualJson["username"]
 
-
-            
-    def getSentiment(self):
-
-        if(self.happiness+self.anger == 0):
-            return 50
-        else:
-            return (int)(100.0*((self.happiness)/(self.happiness+self.anger)))
-
-class Edge:
-    def __init__(self,node1,node2):
-        self.source = node1
-        self.target = node2
-        self.weight = 0
-
-        self.valid = True
-        self.visited = False
-
-        self.count = 0
-        self.happiness = 0.0
-        self.anger = 0.0
-    def getTargetValue(self):
-        return self.target.value
-    def getSourceValue(self):
-        return self.source.value
-
-    def setWeight(self,weight):
-        self.weight=weight
-
-    def getWeight(self):
-        return self.weight
-
-    def isValid(self):
-        return self.valid
-
-    def getSentiment(self):
-        if(self.happiness+self.anger == 0):
-            return 50
-        else:
-            return (int)(100.0*((self.happiness)/(self.happiness+self.anger)))
-
-
-class Graph:
-    def __init__(self):
-        self.nodes = {}
-        self.size = 0
-        self.edges = {}
-        self.count = 0
-        self.happiness = 0
-        self.anger = 0
-    def addNode(self,node):
-        self.nodes[node.name] = node
-        self.size+=1
-
-    def getNode(self,name):
-        return self.nodes[name]
-
-    def getAdjacentNodes(self,name):
-        return self.nodes[name].neighbors
-
-    def nodeExists(self,name):
-        if(name in self.nodes):
-            return True
-        else:
-            return False
-
-    def edgeExists(self,name1,name2):
-        if(self.nodeExists(name1) and self.nodeExists(name2)):
-            if(self.getNode(name1).existsNeighbor(name2) and self.getNode(name2).existsNeighbor(name1)):
-                return True
-
-        return False
-
-    def getEdge(self,name1,name2):
-        if(self.edgeExists(name1,name2)):
-            return self.getNode(name1).getNeighbor(name2)
-
-    def addEdge(self,name1,name2):
-
-
-        if(self.nodeExists(name1) and self.nodeExists(name2)):
-            edge = Edge(self.getNode(name1),self.getNode(name2))
-            self.getNode(name1).addEdge(name2,edge)
-            self.getNode(name2).addEdge(name1,edge)
-            self.edges[edge] = edge
-            #self.edges[edge] = edge
-
-    def renameOrdered(self):
-        i=0
-        for item,value in self.nodes.iteritems():
-            if(value.isValid()):
-                value.value = i
-                i+=1
-
-    #should probably cache
-    def outputNodes(self):
-        output = []
-        for name, node in self.nodes.iteritems():
-
-           if(node.isValid()):
-               output.append(node)
-        #print "nodes num",len(output)
-        return output
-
-    def outputEdges(self):
-        output = []
-        for key, value in self.edges.iteritems():
-            if(value.isValid()):
-               output.append(value)
-        #print "edges num",len(output)
-        return output
-
-    ## make it so we only get top n nodes.
-    ## make it a functional programming option.
-    def invalidate(self,graph,number):
-        #print "invalidating"
-        #local_amount = (int)(len(self.nodes)*graph.percent)
-        local_amount = number
-        unordered_list = []
-        for name,node in self.nodes.iteritems() :
-            #node.valid = True
-            if(node.valid):
-                unordered_list.append(node)
-            #print node.name,node.mass,len(node.neighbors)
-            #for key,value in node.neighbors.iteritems():
-                #print value.isValid()
-                #value.valid = True
-
-        unordered_list.sort(key=lambda node: -len(node.neighbors))
-        #print "unorder"
-        #print unordered_list[0:min(graph.amount_shown,len(unordered_list))]
-
-        for node in unordered_list[min(local_amount,len(unordered_list)):len(unordered_list)]:
-            #print node.name,node.mass,len(node.neighbors)
-            node.valid = False
-
-            for key,value in node.neighbors.iteritems():
-                #print value.isValid()
-                #print value.source.name,value.target.name
-                value.valid = False
+    searchterms = actualJson["array"]
 
 
 
-            #print ""
+    ##Get JSON from database.
+    usersJson = json.loads(users)
+    #print usersJson["users"][0]
+    
+    usersList = getDBJsonUsersList()
 
-    ##clear all filters.
-    def reset(self,graph):
-        for name,node in self.nodes.iteritems():
-            node.valid = True
-            node.visited = True
-            for key,value in node.neighbors.iteritems():
-                value.valid = True
-                
+    '''
+    usersList2 = []
+    for user in usersJson["users"]:
+        usersList.append(User(user))
 
-    def filtermain(self,graph):
-        ##create map of groups of nodes, rank them by size, choose greatest,
-        ##then remove everything else.
+    '''
 
+    user = User(getDBJsonUser(username))
+
+    usersList = sorted(usersList, key=lambda x: user.searchSimilarity(x,searchterms,add=True), reverse=True)
+
+
+
+    prejsonlist = []
+    
+    for user in usersList:
+        similarity = user.searchSimilarity(user,searchterms,add=False)
+        #print similarity,user
+        if(user.searchSimilarity(user,searchterms,add=False)>0):
+            prejsonlist.append(user.json)
+    #print "LEN",len(prejsonlist)
+    return renderJSON(json.loads('{"Array":'+json.dumps(prejsonlist)+'}'))
+    #pystache.render('Hi {{person}}!', {'person': 'Mom'})
+    #return json.dumps(prejsonlist)
+    
+
+    ##Return JSON data
+
+<<<<<<< HEAD
         ##breadth first-search.
         if(graph.size <=0):
             return False
             
         
         index = 0
+=======
+##Calling flask on
+>>>>>>> ba66a2fc79ad5eb26a68d4c81742c122ee8396a9
 
-        groups = 0
-        maxnode = graph.nodes.items()[0][1]
-        #
-        for name,node in graph.nodes.items():
-            #print node.neighbors
-            node.visited = False
-            if(len(node.neighbors) > len(maxnode.neighbors)):
-                maxnode = node
+def getDBJsonUser(username):
 
-        #print maxnode.dupes,maxnode.uniques
 
- 
-        #print maxnode.neighbors.items()
-        group = -1
-        groups = []
-        while(index < len(graph.nodes)):
-            #print "firstnode",graph.nodes.items()[index][1]
-            if(graph.nodes.items()[index][1].visited == True):
-                index+=1
-                continue
+    result = {}
+
+    
+    # Read a single record
+    sql = "SELECT id, username,firstname,lastname,position,location FROM users WHERE username = '"+username+"';"
+    #print sql
+    cursor.execute(sql)
+    result = cursor.fetchone()
             
-            group+=1               
-            visited = {}
-            queue = [graph.nodes.items()[index][1]]
-            num = 0
-            while(len(queue) > 0):
-                node = queue[0]
-                #print node
-                #print queue
-                queue = queue[1:]
-                #print queue
-                node.visited = True
-                visited[node.name] = node
-                num+=1
-                for name, neighbor in node.neighbors.items():
-                    #print name
-                    if(neighbor.target.visited == False):
-                        queue.append(neighbor.target)
-
-            
+<<<<<<< HEAD
             groups.append((group,visited,num))
 
         #print groups
@@ -677,49 +637,83 @@ class twitter:
         for node in self.graph.outputNodes():
 
             #print {'name':item}
+=======
 
+    print(result)
+    json = {"id":result['id'],
+            "username":result['username'],
+            "firstname":result['firstname'],
+            "lastname":result['lastname'],
+            "position":result['position'],
+            "location":result['location'],
+            "have":[],
+            "need":[],
+            "willgive":[],
+            "willneed":[]}
 
+    sql = "SELECT skill, recommendations FROM userskills WHERE userid = '"+str(result['id'])+"';"
+
+    cursor.execute(sql)
+    
+    for row in cursor.fetchall():
+>>>>>>> ba66a2fc79ad5eb26a68d4c81742c122ee8396a9
+
+        json['have'].append({row['skill']:row['recommendations']})
+
+<<<<<<< HEAD
             #print '{"name":',node.name,',"group":',node.group,',"mass":',node.mass,',"value":',node.value#node.neighbors#,node.value
             nodejson = {'name':node.name,'group':node.group,'mass':len(node.neighbors),'sentiment':node.getSentiment()}
+=======
+    sql = "SELECT skill FROM userneeds WHERE userid = '"+str(result['id'])+"';"
+>>>>>>> ba66a2fc79ad5eb26a68d4c81742c122ee8396a9
 
-            #print {'name':item.name,'group':item.group,'size':item.size}
+    cursor.execute(sql)
+    
+    for row in cursor.fetchall():
 
-            #print 'json','name',item['name'],'group',item['group'],'size',item['size']
-            nodesjsonlist.append(nodejson)
-        jsonObj['nodes'] = nodesjsonlist
+        json['need'].append({row['skill']:1})
 
-        edgesjsonlist = []
-        for edge in self.graph.outputEdges():
+    #print "JSON GETDBJSONUSER::::",json
+    
+    return json
+    
 
+<<<<<<< HEAD
             #print {'source':edge.source.value,'target':edge.target.value,'weight':edge.weight}
             edgejson = {'source':edge.source.value,'target':edge.target.value,'value':edge.weight,'sentiment':edge.getSentiment()}
             edgesjsonlist.append(edgejson)
+=======
+def getDBJsonUsersList():
+>>>>>>> ba66a2fc79ad5eb26a68d4c81742c122ee8396a9
 
 
-            #if(self.existsNode(edge[1])):
+    result = {}
 
-        jsonObj['links'] = edgesjsonlist
+ 
+    # Read a single record
+    sql = "SELECT id, username FROM users;"
 
-        return jsonObj
-#pass in filter function.
-def analyzeTweets(keyword,numTweets,request):
-    try: 
-        numBubbles = int(request.args.get('numBubbles'))
-    except AttributeError:
-        numBubbles = 0
+    cursor.execute(sql)
+    usersList = []
+    for row in cursor.fetchall():
 
-    try:
-        mainBool = str(request.args.get('main'))
-    except AttributeError:
-        mainBool = "True"
+        usersList.append(User(getDBJsonUser(row['username'])))
+        
+    #print usersList
+    return usersList
 
 
     
-    tweets = twitter(keyword,numTweets)
-    ##dont bother with keyword and numTweets arguments.
+def renderJSON(json):
+    #json = '{"Array":'+json+'}'
+    print json
+    html = pystache.render(mustacheSearchFile, json)
+    print html
+    return html
 
-    
+def jaccard_similarity(x,y):
 
+<<<<<<< HEAD
     ##put all tweets in list.
     tweets.fetchTweets(keyword)
     print "fetchtweets"
@@ -750,12 +744,21 @@ def analyzeTweets(keyword,numTweets,request):
         tweets.graph.filtermain(tweets.graph)
     
     print "filtering"
+=======
+    intersection_cardinality = len(set.intersection(*[set(x), set(y)]))
+    union_cardinality = len(set.union(*[set(x), set(y)]))
+    return intersection_cardinality/float(union_cardinality)
 
-    ##getting number of top bubbles to display.
-    if(numBubbles > 0):
-        ##filter only leaving top n nodes.
-        tweets.graph.invalidate(tweets,numBubbles)
+#print jaccard_similarity([0,1,2,5,6],[0,2,3,5,7,9])
 
+
+>>>>>>> ba66a2fc79ad5eb26a68d4c81742c122ee8396a9
+
+class User:
+    def __init__(self,json):
+        self.json = json
+
+<<<<<<< HEAD
     print "numbering bubbles"
     ##filter only leaving top n nodes.
     #tweets.graph.invalidate(tweets)
@@ -769,21 +772,65 @@ def analyzeTweets(keyword,numTweets,request):
     #returning json data of the graph.
     print "finished"
     return json.dumps(jsondata)
+=======
+    def searchSimilarity(self,user,searchterms,add):
+        #print "-------",user.json
+>>>>>>> ba66a2fc79ad5eb26a68d4c81742c122ee8396a9
+
+        summation = 0
+        total = 0
+        #print user
+        skills = user.json["have"]
+        #print skills
+        for item in skills:
+            for element in searchterms:
+                #print item,element
+                #print item.items()
+                
+                if item.items()[0][0] == element.items()[0][0]:
+                    summation+=float(item.items()[0][1])*float(element.items()[0][1])
+                    if(add):
+                        user.json["willgive"].append({"id":user.json["id"],"location":user.json["location"],"position":user.json["position"],"username":user.json["username"],"firstname":user.json["firstname"],"lastname":user.json["lastname"],"name":item.items()[0][0],"score":item.items()[0][1]})
+                total += float(item.items()[0][1])
+
+        total2 = 0
+        summation2 = 0
+        if(summation > 0):
+            skills = user.json["need"]
+            #print skills
+            for item in skills:
+                for element in self.json["have"]:
+                    #print item,element
+                    
+                    
+                    if item.items()[0][0] == element.items()[0][0]:
+                        summation2+=float(item.items()[0][1])*float(element.items()[0][1])
+                        if(add):
+                            user.json["willneed"].append({"id":user.json["id"],"location":user.json["location"],"position":user.json["position"],"username":user.json["username"],"firstname":user.json["firstname"],"lastname":user.json["lastname"],"name":item.items()[0][0],"score":element.items()[0][1]})
+                    total2 += float(element.items()[0][1])
+    #["willgive"][item.items()[0][0]] = "1"
+        else:
+            return 0.0
+        #print summation
+        #print total
+        if(total == 0.0):
+            return 0.0
+        #print "SCORE OF SIMILARITY:",float(summation)/float(total)
+        
+        return float(summation+(summation2/total2))
+        
+    def searchJSON(self,user,searchterms):
+        #
+        print user
 
 
-
-    #print "test: square(42) ==", square(42)
 if __name__ == '__main__':
+<<<<<<< HEAD
     #analyzeTweets('yahoo',50,"")
     
+=======
+    #analyzeTweets('yahoo',10000,"")
+>>>>>>> ba66a2fc79ad5eb26a68d4c81742c122ee8396a9
     app.run(host='0.0.0.0', port=port)
 
-#keyword = "taytweets"
-##pass in a keyword from the ajax call, as well as dates, quantity, n% cutoff
-## and so on.
 
-##We both need filtering functions for the twitter firehose api, as well as
-##a node filter function #functionalprogrammingyall
-## and an edge filter function.
-
-##also return json file to ajax caller.

@@ -2,4 +2,9 @@ Flask
 requests
 networkx
 flask_cors
+<<<<<<< HEAD
 nltk
+=======
+pystache
+pymysql
+>>>>>>> ba66a2fc79ad5eb26a68d4c81742c122ee8396a9
