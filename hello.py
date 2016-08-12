@@ -267,6 +267,38 @@ class Graph:
 
 
             #print ""
+    ## make it so we only get node greater than 0 mass with neighbors
+    ## make it a functional programming option.
+    def scrub(self):
+
+
+        unordered_list = []
+        for name,node in self.nodes.iteritems():
+            #node.valid = True
+            if(node.valid):
+                unordered_list.append(node)
+            #print node.name,node.mass,len(node.neighbors)
+            #for key,value in node.neighbors.iteritems():
+                #print value.isValid()
+                #value.valid = True
+
+        unordered_list.sort(key=lambda node: -len(node.neighbors))
+        #print "unorder"
+        #print unordered_list[0:min(graph.amount_shown,len(unordered_list))]
+
+        for node in unordered_list:
+            #print node.name,node.mass,len(node.neighbors)
+            if(len(node.neighbors) == 0 or node.mass <= 0):
+                node.valid = False
+
+                for key,value in node.neighbors.iteritems():
+                    #print value.isValid()
+                    #print value.source.name,value.target.name
+                    value.valid = False
+
+
+
+            #print ""
 
     ##clear all filters.
     def reset(self,graph):
@@ -546,7 +578,7 @@ class twitter:
     def getSentiment(self,sentiment):
         ##ideally compile all words here to begin with to get idf score
 
-        print "SENTIMENT",sentiment
+        #print "SENTIMENT",sentiment
         if(sentiment == "POSITIVE"):
             return 1
         elif(sentiment == "NEGATIVE"):
@@ -615,7 +647,8 @@ class twitter:
 
                 normalizedToken = token.lower()
 
-                listoftokens.append(normalizedToken)
+                if(normalizedToken != self.keyword[1:]):
+                    listoftokens.append(normalizedToken)
 
 
         return listoftokens
@@ -685,7 +718,7 @@ class twitter:
 
 
             #print '{"name":',node.name,',"group":',node.group,',"mass":',node.mass,',"value":',node.value#node.neighbors#,node.value
-            nodejson = {'name':node.name,'group':node.group,'mass':len(node.neighbors),'sentiment':node.getSentiment()}
+            nodejson = {'name':node.name,'group':node.group,'value':len(node.neighbors),'sentiment':node.getSentiment()}
 
             #print {'name':item.name,'group':item.group,'size':item.size}
 
@@ -760,6 +793,12 @@ def analyzeTweets(keyword,numTweets,request):
     if(numBubbles > 0):
         ##filter only leaving top n nodes.
         twittergraph.graph.invalidate(numBubbles)
+
+    if(numBubbles > 0):
+        ##filter only leaving nodes that are greater than 0 mass with 0 neighbors
+        twittergraph.graph.scrub()
+
+    
 
     print "numbering bubbles"
     ##filter only leaving top n nodes.
