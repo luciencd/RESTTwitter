@@ -15,6 +15,7 @@ import time
 #NLTK_DATA = '/Users/lucienchristie-dervaux/documents/RESTTwitter'
 nltk.data.path.append('/Users/lucienchristie-dervaux/documents/RESTTwitter/nltk_data')
 nltk.data.path.append('/home/vcap/app/nltk_data')
+nltk.data.path.append('/Users/luciencd/Dropbox/Ibm/Documents/RESTTwitter/nltk_data')
 nltk.data.path = nltk.data.path[1:]
 
 from nltk.corpus import stopwords
@@ -22,25 +23,25 @@ print nltk.data.path
 
 c = {}
 def getCache(url):
-    
+
     try:
         return c[url]
     except TypeError:
         return False
-    
+
 def cached(url):
     #Obviously if its been 1 day, remove cache values
-    
+
     if url in c:
         return True
     else:
         return False
 
-    
+
 def cache(url,data):
     c[url] = data
 
-    
+
 app = Flask(__name__)
 CORS(app)
 
@@ -64,7 +65,7 @@ def analyze():
     mainBool = str(request.args.get('main'))
     t = time.strftime("%B/%d")
     ##add date rounded to nearest hour to url, so that every hour, the thing gets updated
-    
+
     url = t+keyword+str(numTweets)+str(numBubbles)+mainBool
     print url
     #cacheing
@@ -103,13 +104,13 @@ class Node:
         self.dupes = 0.0
         self.uniques = 0.0
     def addEdge(self,name,edge):
-         
+
         if(name in self.neighbors):
             #print "duplicate"
             self.dupes+=1
         else:
             self.uniques+=1
-        
+
         self.neighbors[name] = edge
 
     def existsNeighbor(self,neighbor):
@@ -123,7 +124,7 @@ class Node:
         return self.valid
 
 
-            
+
     def getSentiment(self):
 
         if(self.happiness+self.anger == 0):
@@ -236,7 +237,7 @@ class Graph:
 
     ## make it so we only get top n nodes.
     ## make it a functional programming option.
-    def invalidate(self,graph,number):
+    def invalidate(self,number):
         #print "invalidating"
         #local_amount = (int)(len(self.nodes)*graph.percent)
         local_amount = number
@@ -274,23 +275,23 @@ class Graph:
             node.visited = True
             for key,value in node.neighbors.iteritems():
                 value.valid = True
-                
 
-    def filtermain(self,graph):
+
+    def filtermain(self):
         ##create map of groups of nodes, rank them by size, choose greatest,
         ##then remove everything else.
 
         ##breadth first-search.
-        if(graph.size <=0):
+        if(self.size <=0):
             return False
-            
-        
+
+
         index = 0
 
         groups = 0
-        maxnode = graph.nodes.items()[0][1]
+        maxnode = self.nodes.items()[0][1]
         #
-        for name,node in graph.nodes.items():
+        for name,node in self.nodes.items():
             #print node.neighbors
             node.visited = False
             if(len(node.neighbors) > len(maxnode.neighbors)):
@@ -298,19 +299,19 @@ class Graph:
 
         #print maxnode.dupes,maxnode.uniques
 
- 
+
         #print maxnode.neighbors.items()
         group = -1
         groups = []
-        while(index < len(graph.nodes)):
+        while(index < len(self.nodes)):
             #print "firstnode",graph.nodes.items()[index][1]
-            if(graph.nodes.items()[index][1].visited == True):
+            if(self.nodes.items()[index][1].visited == True):
                 index+=1
                 continue
-            
-            group+=1               
+
+            group+=1
             visited = {}
-            queue = [graph.nodes.items()[index][1]]
+            queue = [self.nodes.items()[index][1]]
             num = 0
             while(len(queue) > 0):
                 node = queue[0]
@@ -326,7 +327,7 @@ class Graph:
                     if(neighbor.target.visited == False):
                         queue.append(neighbor.target)
 
-            
+
             groups.append((group,visited,num))
 
         #print groups
@@ -336,8 +337,8 @@ class Graph:
         #gets biggest group of nodes
         visited = groups[0][1]
         #print len(visited)
-        
-        for name,node in graph.nodes.items():
+
+        for name,node in self.nodes.items():
             #print node
             if name not in visited:
                 #print name,len(node.neighbors)
@@ -346,7 +347,7 @@ class Graph:
                     value.valid = False
 
     ##Difficult to tell what is happening here,
-    ##however, it 
+    ##however, it
     def filteredges(self,graph):
         for name,node in graph.nodes.items():
             neighbor_array = node.neighbors.values()
@@ -354,26 +355,26 @@ class Graph:
                 edge.valid = False
 
 
-        ##Here, 
+        ##Here,
         for name,node in graph.nodes.items():
 
             neighbor_array = node.neighbors.values()
-            
+
             neighbor_array = sorted(neighbor_array,key=lambda edge:edge.weight,reverse=False)
-            
-            
+
+
         for name,node in graph.nodes.items():
-            
+
             neighbor_array = node.neighbors.values()
             index = 0
             for edge in neighbor_array:
-                
+
                 source_array = edge.source.neighbors.values()
                 target_array = edge.target.neighbors.values()
                 #print len(source_array),len(target_array)
                 #print source_array,target_array
                 #print edge.source,edge.target
-                
+
                 #getting rid of edges that are not relevant.
                 '''
                 if(source_array.index(edge)<= len(source_array)/2 or target_array.index(edge)<= len(target_array)/2):
@@ -386,36 +387,53 @@ class Graph:
                 index +=1
                 '''
 
-    #dynamic programming filter.                    
+    #dynamic programming filter.
     def filterit(self,graph,func):
         #print "invalidating"
- 
+
         for node in graph.nodes:
             if(func(node)):
                 node.valid = False
                 for key,value in node.neighbors.iteritems():
                     value.valid = False
 
-                
+
 class twitter:
 
     def __init__(self,keyword,numTweets):
         ##Must make ths thing link to envir vars from bluemix
         self.TWITTER_USERNAME = "f8499318-83de-4e36-bb68-adf3cd8ab000"
         self.TWITTER_PASSWORD = "RdCd9hrTag"
-        self.NO_OF_TWEETS_TO_RETRIEVE = numTweets
+
+        ##Parameters
         self.keyword = keyword
-        #self.min_cutoff = self.NO_OF_TWEETS_TO_RETRIEVE/300
-        self.amount_shown = 100
-        self.percent = 1.0
+        self.numTweets = numTweets
+
+
+        ##JSON data
         self.twe = {}
         self.sentiments = {}
         self.output = {}
+
+        ##Place to hold graph.
         self.graph = Graph()
+
+        ##actual size of graph, maybe hold this value inside graph instead.
         self.size = -1
 
-        
+        ##dictionary that tells you the frequency of each word.
         self.df = {}
+        
+    def fetchTweets(self):
+        ##Setting up API call
+        payload = {"q": self.keyword, "size": self.numTweets}
+        response = requests.get("https://cdeservice.mybluemix.net:443/api/v1/messages/search", params=payload, auth=(self.TWITTER_USERNAME, self.TWITTER_PASSWORD))
+
+
+        ##loading in response of json data to class.
+        twe = json.loads(response.text)
+        self.twe = twe['tweets']
+        return twe['tweets']
         
     def reduceit(self,string):
         #print string
@@ -425,40 +443,8 @@ class twitter:
         #print string
         return string
 
+    ##Taking in a set of tokens from a tweet, and adding it to the graph.
     def addToGraph(self,sentiment,tokens):
-
-        '''
-        #body = re.sub(':,;%.\n',' ',body)
-        #body = re.sub('',' ',body)
-        body = body.lower()
-        hashtags = body.split(' ')
-        handle = body.split(' ')
-        #print handle
-        
-        hashtags = map(lambda x: self.reduceit(x),hashtags)
-        handle = map(lambda x: self.reduceit(x),handle)
-
-        for i in range(len(hashtags)):
-            tokens = ''.join(e for e in string if e.isalnum())
-            
-
-        hashtags = filter(lambda x:( x != ""),hashtags)
-        handle = filter(lambda x:( x != ""),handle)
-
-#        hashtags = filter(lambda x:(x!=str("#"+self.keyword)),hashtags)
-#        handle = filter(lambda x:(x!=str("@"+self.keyword)),handle)
-
-        hashtags = filter(lambda x:( x != "#"),hashtags)
-        handle = filter(lambda x:( x != "@"),handle)
-
-
-        hashtags = filter(lambda x:( x[0] == "#"),hashtags)
-        handle = filter(lambda x:( x[0] == "@"),handle)
-
-        print handle
-        '''
-
-
 
         #print "tweet:",body
         #print "content: ",hashtags+handle
@@ -467,17 +453,11 @@ class twitter:
             ##Add or edit the node itself
             oldnode = ""
             if(self.graph.nodeExists(item)):
+                #getting node object from graph
                 oldnode = self.graph.getNode(item)
-
             else:
+                #creatig new node object.
                 node = Node(item,0,1)
-                '''
-                if(item[0] == '#'):
-                    node = Node(item,0,len(hashtags)+len(handle))
-                else:
-                    node = Node(item,1,len(hashtags)+len(handle))
-                '''
-
                 self.graph.addNode(node)
                 oldnode = self.graph.getNode(item)
 
@@ -488,18 +468,13 @@ class twitter:
                 oldnode.happiness+=1
 
             oldnode.count += 1
-            #print self.graph.getNode(item)
 
-
-
-
-            #nx.set_node_attributes(G, 'mass', {1:3.5, 2:56})
-
-
+        ##Assigning a connection between the nodes that are in the set of nodes.
+    
         for node1 in tokens:
             for node2 in tokens:
                 if(node1 != node2):
-                    
+
                     #
                     edge = ""
                     if(self.graph.edgeExists(node1,node2)):
@@ -521,64 +496,75 @@ class twitter:
                     edge.count += 1
 
 
-    def fetchTweets(self, term):
-          payload = {"q": term, "size": self.NO_OF_TWEETS_TO_RETRIEVE}
-          response = requests.get("https://cdeservice.mybluemix.net:443/api/v1/messages/search", params=payload, auth=(self.TWITTER_USERNAME, self.TWITTER_PASSWORD))
-          
-          twe = json.loads(response.text)
-          #print len(twe['tweets'])
-          self.twe = twe['tweets']
-          return twe
+    
+    def createGraph(self,tweets):
+        ##find out the sentiment of each tweet by going through the json object.
+        for i in range(self.numTweets):
+            #print i,len(tweets),len(tweets[i])
 
-    def getSentiment(self):
-        ##ideally compile all words here to begin with to get idf score
-        
-        for i in range(self.NO_OF_TWEETS_TO_RETRIEVE):
-            sentiment = "AMBIVALENT"
-            body = ""
-            symbols = []
+
+
+            ##At this point, we should have an object which using polymorphism,
+            ##can have its body, and sentiment extracted
+
+            ##That way, we can use this on facebook posts, and yelp reviews too.
+
+            ##tweet = tweets[i]
+            
+            body = []
             try:
-                sentiment = self.twe[i]['cde']['content']['sentiment']['polarity']
-
+                ##From base object, should be able to get body.
+                body = tweets[i]['message']['body']
             except KeyError:
                 pass
             except IndexError:
                 pass
+            
+            sentiment = ""
             try:
-
-                body = self.twe[i]['message']['body']
-                symbols = self.twe[i]['message']['twitter_entities']['symbols']
-                ##Need tool that can extract key words from string sentence.
+                sentiment = tweets[i]['cde']['content']['sentiment']['polarity']
             except KeyError:
                 pass
             except IndexError:
                 pass
+            
+            ##Get sentiment directly from tweet
+            sentiment = self.getSentiment(sentiment)
+            #print sentiment
 
-            if(sentiment == "POSITIVE"):
-                sentint = 1
-                #print "pos"
-            elif(sentiment == "NEGATIVE"):
-                sentint = 0
-                #print "neg"
-            else:
-                sentint = 0.5
-            ##for this tweet,
-
-
+            ##get tokens from body of text
             tokens = self.tokenize(body)
+            #print tokens
             
- 
-            
+            ##assign scores to the relevant tokens
             scores = self.scoreize(tokens)
+            #print scores
+
+            self.addToGraph(sentiment, scores)
+    
             
-            
-            self.addToGraph(sentint, scores)
-            
-    def collectText(self):
+    def getSentiment(self,sentiment):
+        ##ideally compile all words here to begin with to get idf score
+
+        print "SENTIMENT",sentiment
+        if(sentiment == "POSITIVE"):
+            return 1
+        elif(sentiment == "NEGATIVE"):
+            return 0
+        else:
+            return 0.5
+
+
+        
+
+
+        
+
+    def collectText(self,tweets):
 
         listOfWords = []
-        
-        for i in range(self.NO_OF_TWEETS_TO_RETRIEVE):
+
+        for i in range(len(tweets)):
             body = ""
 
             try:
@@ -593,13 +579,10 @@ class twitter:
 
 
 
-
             tokens = self.tokenize(body)
 
-            
-
             uniques = set(tokens)
-            
+
             for word in uniques:
                 if word in self.df:
                     self.df[word]+= 1
@@ -607,9 +590,9 @@ class twitter:
                     self.df[word] = 1
 
 
-        
+
     def tokenize(self,body):
-        
+
         #print body
         ##map single string body to sentence
         sentences = nltk.tokenize.sent_tokenize(body)
@@ -619,9 +602,9 @@ class twitter:
         tokens = [nltk.tokenize.word_tokenize(s) for s in sentences]
         #print tokens
 
-        
 
- 
+
+
         ##keep only top 4 words with highest tdidf score in all sentences,
         ##where each sentence is a separate document(or not for now)
         listoftokens = []
@@ -629,12 +612,12 @@ class twitter:
 
             for token in sentence:
                 ##time to normalize every token
-                
+
                 normalizedToken = token.lower()
-                
+
                 listoftokens.append(normalizedToken)
 
-        
+
         return listoftokens
 
     def scoreize(self,tokens):
@@ -645,7 +628,7 @@ class twitter:
         scores = []
         #print "scoreize"
         #print tokens,"\n\n"
-        
+
         tokens = [token for token in tokens if token not in stopwords.words('english')]
         tokens = [token for token in tokens if len(token)>3]
         tokens = [token for token in tokens if token not in ["http","https"]]
@@ -659,10 +642,10 @@ class twitter:
             df = self.df[token]
             if(df < 2):
                 continue
-            
+
             idf = 1.0/df;
-     
-                
+
+
             scores.append( (token,round(tf,5),round(df,5),round(idf,5),round(tf*idf,5) ))
             #print scores[len(scores)-1],tokens,"\n\n"
         scores = sorted(scores, key=lambda tup: tup[3],reverse=True)
@@ -672,17 +655,17 @@ class twitter:
             newlist.append(score[0])
 
         #print scores[0:4]
-        
+
         #for tokens in scores[0:2]:
         #   print tokens[0],tokens[1],tokens[2],tokens[3]
         return newlist
                     #print token,"appeared ", df,"times total. appeared ",tf," times in the document giving a score of:",tf*idf
-        
-            
 
-    
 
-        
+
+
+
+
     def printGraph(self,search):
 
         edges = list(self.graph.edges(data=True))
@@ -725,7 +708,7 @@ class twitter:
         return jsonObj
 #pass in filter function.
 def analyzeTweets(keyword,numTweets,request):
-    try: 
+    try:
         numBubbles = int(request.args.get('numBubbles'))
     except AttributeError:
         numBubbles = 0
@@ -736,56 +719,56 @@ def analyzeTweets(keyword,numTweets,request):
         mainBool = "True"
 
 
-    
-    tweets = twitter(keyword,numTweets)
+
+    twittergraph = twitter(keyword,numTweets)
     ##dont bother with keyword and numTweets arguments.
 
-    
+
 
     ##put all tweets in list.
-    tweets.fetchTweets(keyword)
+    tweets = twittergraph.fetchTweets()
     print "fetchtweets"
 
     ##create text collection
-    tweets.collectText()
+    twittergraph.collectText(tweets)
     print "collecttext"
     ##get all the sentiment for nodes and generate graph.
-    tweets.getSentiment()
+    twittergraph.createGraph(tweets)
     print "getSentiment"
 
-    
-    
+
+
     ##reset all nodes to unfiltered unvisited.
-    tweets.graph.reset(tweets.graph)
+    twittergraph.graph.reset(twittergraph.graph)
     print "reset"
-    print len(tweets.graph.nodes)
+    print len(twittergraph.graph.nodes)
 
 
-    
+
     ##only allowing 5 top edges per node.
     ##tweets.graph.filteredges(tweets.graph)
 
-    
+
     ##filtering things based on get requests
     if(mainBool == "True"):
         ##filter out all the nodes that are not a part of the biggest connected graph
-        tweets.graph.filtermain(tweets.graph)
-    
+        twittergraph.graph.filtermain()
+
     print "filtering"
 
     ##getting number of top bubbles to display.
     if(numBubbles > 0):
         ##filter only leaving top n nodes.
-        tweets.graph.invalidate(tweets,numBubbles)
+        twittergraph.graph.invalidate(numBubbles)
 
     print "numbering bubbles"
     ##filter only leaving top n nodes.
     #tweets.graph.invalidate(tweets)
 
-    
-    
-    tweets.graph.renameOrdered()
-    jsondata = tweets.returnJSON()
+
+
+    twittergraph.graph.renameOrdered()
+    jsondata = twittergraph.returnJSON()
     #print len(jsondata)
 
     #returning json data of the graph.
@@ -797,7 +780,7 @@ def analyzeTweets(keyword,numTweets,request):
     #print "test: square(42) ==", square(42)
 if __name__ == '__main__':
     #analyzeTweets('yahoo',50,"")
-    
+
     app.run(host='0.0.0.0', port=port)
 
 #keyword = "taytweets"
